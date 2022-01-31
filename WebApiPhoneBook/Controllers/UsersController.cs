@@ -11,7 +11,6 @@ namespace WebApiPhoneBook.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "admin")]
     public class UsersController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
@@ -22,12 +21,14 @@ namespace WebApiPhoneBook.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<IEnumerable<User>>> Get()
         {
             return await _userManager.Users.ToListAsync();
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<User>> Get(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -41,9 +42,10 @@ namespace WebApiPhoneBook.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<User>> Post(UserLogin model)
         {
-            User user = new User { UserName = model.Login};
+            User user = new User { UserName = model.UserName };
             var result = await _userManager.CreateAsync(user, model.Password);
             if (result.Succeeded)
             {
@@ -55,6 +57,7 @@ namespace WebApiPhoneBook.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Put(string id, UserEdit model)
         {
             User user = await _userManager.FindByIdAsync(id);
@@ -63,7 +66,7 @@ namespace WebApiPhoneBook.Controllers
                 return BadRequest();
             }
 
-            user.UserName = model.Login;
+            user.UserName = model.UserName;
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)
             {
@@ -73,6 +76,7 @@ namespace WebApiPhoneBook.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(string id)
         {
 

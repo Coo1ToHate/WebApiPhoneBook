@@ -2,6 +2,6 @@
 {
     public class UserEdit
     {
-        public string Login { get; set; }
+        public string UserName { get; set; }
     }
 }

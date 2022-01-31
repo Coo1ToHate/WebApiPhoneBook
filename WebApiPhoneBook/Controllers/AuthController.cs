@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using WebApiPhoneBook.Models;
 
@@ -20,22 +21,30 @@ namespace WebApiPhoneBook.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly JwtSettings _jwtSettings;
 
-        public AuthController(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, JwtSettings jwtSettings)
+        public AuthController(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IOptionsSnapshot<JwtSettings> jwtSettings)
         {
             _userManager = userManager;
             _roleManager = roleManager;
-            _jwtSettings = jwtSettings;
+            _jwtSettings = jwtSettings.Value;
         }
 
         [HttpPost("signup")]
         public async Task<IActionResult> SignUp(UserSignUp model)
         {
-            User user = new User { UserName = model.Login };
+            User user = new User { UserName = model.UserName };
             var result = await _userManager.CreateAsync(user, model.Password);
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, "user");
-                return Created(string.Empty, string.Empty);
+                var roles = await _userManager.GetRolesAsync(user);
+                var accessToken = GenerateJwt(user, roles);
+
+                return new ObjectResult(new
+                {
+                    user.Id,
+                    user.UserName,
+                    access_token = accessToken
+                });
             }
 
             return Problem(result.Errors.First().Description, null, 500);
@@ -45,7 +54,7 @@ namespace WebApiPhoneBook.Controllers
         public async Task<IActionResult> SignIn(UserLogin model)
         {
 
-            var user = _userManager.Users.SingleOrDefault(u => u.UserName == model.Login);
+            var user = _userManager.Users.SingleOrDefault(u => u.UserName == model.UserName);
             if (user is null)
             {
                 return NotFound("User not found");
@@ -56,7 +65,13 @@ namespace WebApiPhoneBook.Controllers
             if (userSigninResult)
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                return Ok(GenerateJwt(user, roles));
+                var accessToken = GenerateJwt(user, roles);
+                return new ObjectResult(new
+                {
+                    user.Id,
+                    user.UserName,
+                    access_token = accessToken
+                });
             }
 
             return BadRequest("Email or password incorrect.");
